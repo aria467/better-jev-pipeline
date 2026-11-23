@@ -69,7 +69,7 @@ const supportTriage: Scenario = {
         urgency: '{{n1.urgent.noul}}',
       },
       includeUpstream: true,
-      position: { x: 280, y: -260 },
+      position: { x: 380, y: -260 },
       questions: {
         refund_eligible: noul('该工单是否涉及重复扣款、未提供服务或其他可退款情形？'),
         refund_risk: choice('退款处理的风险等级如何？', [
@@ -89,7 +89,7 @@ const supportTriage: Scenario = {
         urgency: '{{n1.urgent.noul}}',
       },
       includeUpstream: true,
-      position: { x: 280, y: 260 },
+      position: { x: 380, y: 260 },
       questions: {
         needs_engineer: noul('该问题是否需要工程师介入排查集成故障？'),
         severity: score('技术问题的严重程度如何？', [
@@ -111,7 +111,7 @@ const supportTriage: Scenario = {
         severity: '{{n3.severity.score}}',
       },
       includeUpstream: true,
-      position: { x: 560, y: 0 },
+      position: { x: 760, y: 0 },
       questions: {
         action: choice('下一步应该采取什么处置动作？', [
           option('自动回复', '可套用标准答复，无需人工'),
@@ -166,7 +166,7 @@ const resumeScreen: Scenario = {
         must_have: '{{n1.must_have.noul}}',
       },
       includeUpstream: true,
-      position: { x: 280, y: 0 },
+      position: { x: 380, y: 0 },
       questions: {
         years: score('相关后端经验处于哪个档位？', [
           level('不足 1 年'),
@@ -194,7 +194,7 @@ const resumeScreen: Scenario = {
         risk: '{{n2.risk.choice}}',
       },
       includeUpstream: true,
-      position: { x: 560, y: 0 },
+      position: { x: 760, y: 0 },
       questions: {
         recommendation: choice('是否推进到面试？', [
           option('建议面试', '值得投入面试资源'),
@@ -243,7 +243,7 @@ const contentReview: Scenario = {
       title: '严重度评估',
       state: { post: POST, category: '{{n1.category.choice}}', pii: '{{n1.contains_pii.noul}}' },
       includeUpstream: true,
-      position: { x: 280, y: -260 },
+      position: { x: 380, y: -260 },
       questions: {
         severity: score('违规严重度处于哪个等级？', [
           level('可忽略', '轻微措辞问题'),
@@ -259,7 +259,7 @@ const contentReview: Scenario = {
       title: '违规判定',
       state: { post: POST, category: '{{n1.category.choice}}', pii: '{{n1.contains_pii.noul}}' },
       includeUpstream: true,
-      position: { x: 280, y: 260 },
+      position: { x: 380, y: 260 },
       questions: {
         violates: noul('这条内容是否违反了社区规范？'),
         policy: choice('如果违规，主要违反哪条规范？', [
@@ -282,7 +282,7 @@ const contentReview: Scenario = {
         policy: '{{n3.policy.choice}}',
       },
       includeUpstream: true,
-      position: { x: 560, y: 0 },
+      position: { x: 760, y: 0 },
       questions: {
         action: choice('建议采取什么处置？', [
           option('放行', '正常展示'),
@@ -340,7 +340,7 @@ const refundGate: Scenario = {
       id: 'n2',
       kind: 'logic',
       title: '自动分流',
-      position: { x: 280, y: 0 },
+      position: { x: 380, y: 0 },
       outputs: [
         {
           id: 'auto_pass',
@@ -363,7 +363,7 @@ const refundGate: Scenario = {
         high_value: '{{n1.high_value.noul}}',
       },
       includeUpstream: true,
-      position: { x: 560, y: -260 },
+      position: { x: 760, y: -260 },
       questions: {
         decision: choice('人工复核后应如何处理？', [
           option('通过退款', '风险可控，可直接退款'),
@@ -382,7 +382,7 @@ const refundGate: Scenario = {
         high_value: '{{n1.high_value.noul}}',
       },
       includeUpstream: true,
-      position: { x: 560, y: 260 },
+      position: { x: 760, y: 260 },
       questions: {
         reply: choice('自动答复应采用哪种处理动作？', [
           option('标准同意退款', '低风险且理由清晰'),

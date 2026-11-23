@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import {
   AlertTriangle,
@@ -8,16 +8,22 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react'
+import {
+  LOGIC_ROW_LIMIT,
+  buildLogicOutputRows,
+  buildQuestionViews,
+  formatPercent,
+} from '../lib/card-view'
 import { collectLogicRefs } from '../lib/logic'
 import {
   collectBuilderRefs,
   isBuilderTree,
   logicOutputExpression,
 } from '../lib/logic-builder'
+import { useStudio } from '../lib/store'
 import { isLogicNode } from '../lib/types'
 import type {
   NodeStatus,
-  Question,
   RunRecord,
   StepNode as StepNodeModel,
 } from '../lib/types'
@@ -77,62 +83,13 @@ function buildLogicChips(node: Extract<StepNodeModel, { kind: 'logic' }>): strin
   ].filter((chip): chip is string => chip !== null)
 }
 
-function buildChips(questions: Record<string, Question>): string[] {
-  const counts = { choice: 0, score: 0, noul: 0 }
-  for (const question of Object.values(questions)) {
-    if (question.type === 'choice') counts.choice += 1
-    else if (question.type === 'score') counts.score += 1
-    else if (question.type === 'noul') counts.noul += 1
-  }
-  const chips = [
-    counts.choice > 0 ? `choice ×${counts.choice}` : null,
-    counts.score > 0 ? `score ×${counts.score}` : null,
-    counts.noul > 0 ? `noul ×${counts.noul}` : null,
-  ]
-  return chips.filter((chip): chip is string => chip !== null)
+function barWidth(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '0%'
+  return `${Math.max(0, Math.min(100, value * 100))}%`
 }
 
-function formatScoreValue(score: number): string {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1)
-}
-
-function buildLogicSummary(result?: RunRecord): string[] {
-  if (!result || result.status !== 'success' || !result.outputs) return []
-  return Object.entries(result.outputs)
-    .slice(0, 2)
-    .map(([id, value]) => `${id} · ${value ? '真' : '假'}`)
-}
-
-function buildSummary(node: StepNodeModel, result?: RunRecord): string[] {
-  if (isLogicNode(node)) return buildLogicSummary(result)
-  const answers = result?.status === 'success' ? result.response?.answers : undefined
-  if (!answers) return []
-
-  const choiceLines: string[] = []
-  const noulLines: string[] = []
-  const scoreLines: string[] = []
-
-  for (const [questionId, answer] of Object.entries(answers)) {
-    if (answer.type === 'choice') {
-      const probability = answer.probabilities?.[answer.choice]
-      const percent = Number.isFinite(probability)
-        ? Math.round((probability as number) * 100)
-        : Math.round(answer.confidence * 100)
-      choiceLines.push(`${questionId} · ${answer.choice} ${percent}%`)
-    } else if (answer.type === 'noul') {
-      const value = Number.isFinite(answer.noul) ? answer.noul : 0
-      noulLines.push(`${questionId} · ${value >= 0.5 ? '是' : '否'} ${value.toFixed(2)}`)
-    } else if (answer.type === 'score') {
-      const question = node.questions[questionId]
-      const total =
-        question?.type === 'score'
-          ? question.levels.length
-          : Object.keys(answer.legend ?? {}).length
-      scoreLines.push(`${questionId} · ${formatScoreValue(answer.score)} / ${total || 10}`)
-    }
-  }
-
-  return [...choiceLines, ...noulLines, ...scoreLines].slice(0, 2)
+function confidenceText(value: number | null): string {
+  return value === null ? '置信度 None' : `置信度 ${formatPercent(value)}`
 }
 
 function buildMetrics(result: RunRecord | undefined, logic: boolean): string {
@@ -150,9 +107,23 @@ function StepNodeView({ data, isConnectable }: NodeProps<Node<StepNodeData>>) {
   const status = result?.status ?? 'idle'
   const meta = STATUS_META[status] ?? STATUS_META.idle
   const logic = isLogicNode(node)
-  const chips = logic ? buildLogicChips(node) : buildChips(node.questions)
-  const summary = buildSummary(node, result)
+  const chips = logic ? buildLogicChips(node) : []
   const metrics = buildMetrics(result, logic)
+  const openQuestionEditor = useStudio((state) => state.openQuestionEditor)
+  const editingQuestionId = useStudio((state) =>
+    state.questionEditor?.nodeId === node.id ? state.questionEditor.questionId : null,
+  )
+
+  const questionViews = useMemo(
+    () => (isLogicNode(node) ? [] : buildQuestionViews(node, result)),
+    [node, result],
+  )
+  const outputRows = useMemo(
+    () => (isLogicNode(node) ? buildLogicOutputRows(node, result) : []),
+    [node, result],
+  )
+  const visibleOutputs = outputRows.slice(0, LOGIC_ROW_LIMIT)
+  const hiddenOutputs = outputRows.length - visibleOutputs.length
 
   const cardClass = [
     'step-card',
@@ -187,7 +158,7 @@ function StepNodeView({ data, isConnectable }: NodeProps<Node<StepNodeData>>) {
           </span>
         </header>
 
-        {chips.length > 0 && (
+        {logic && chips.length > 0 && (
           <div className="step-chips">
             {chips.map((chip) => (
               <span className="step-chip" key={chip}>
@@ -197,13 +168,108 @@ function StepNodeView({ data, isConnectable }: NodeProps<Node<StepNodeData>>) {
           </div>
         )}
 
-        {summary.length > 0 && (
+        {!logic && questionViews.length > 0 && (
+          <div className="step-q-list">
+            {questionViews.map((view) => {
+              const editing = editingQuestionId === view.id
+              const noulPercent = view.noulPercent ?? null
+              return (
+                <button
+                  type="button"
+                  key={view.id}
+                  className={`step-q nodrag${editing ? ' is-editing' : ''}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={editing}
+                  aria-label={`编辑问题 ${view.id}`}
+                  title={`编辑问题 ${view.id}`}
+                  onClick={() => openQuestionEditor(node.id, view.id)}
+                >
+                  <span className="step-q-head">
+                    <span className="step-q-id mono">{view.id}</span>
+                    <span className="step-q-type">{view.type}</span>
+                  </span>
+
+                  {view.type === 'noul' ? (
+                    <>
+                      <span className="step-q-noul mono">
+                        P(是) = {noulPercent === null ? 'None' : noulPercent.toFixed(2)}
+                      </span>
+                      <span className="step-q-gauge">
+                        <span
+                          className="step-q-gauge-fill"
+                          style={{ width: barWidth(noulPercent) }}
+                        />
+                        <span className="step-q-gauge-tick" aria-hidden="true" />
+                        {noulPercent === null ? null : (
+                          <span
+                            className="step-q-gauge-marker"
+                            style={{ left: barWidth(noulPercent) }}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </span>
+                      <span className="step-q-ends">
+                        <span>否</span>
+                        <span>是</span>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {view.type === 'score' && (
+                        <span className={`step-q-score mono${view.scoreText ? '' : ' is-none'}`}>
+                          {view.scoreText ?? 'score None'}
+                        </span>
+                      )}
+                      <span className="step-q-rows">
+                        {view.rows.map((row) => (
+                          <span
+                            className={`step-q-row${row.chosen ? ' is-chosen' : ''}${row.percent === null ? ' is-none' : ''}`}
+                            key={`${view.id}-${row.label}`}
+                          >
+                            <span className="step-q-name" title={row.label}>
+                              {row.label}
+                            </span>
+                            <span className="step-q-track">
+                              <span
+                                className="step-q-fill"
+                                style={{ width: barWidth(row.percent) }}
+                              />
+                            </span>
+                            <span className="step-q-pct mono">
+                              {row.percent === null ? 'None' : formatPercent(row.percent)}
+                            </span>
+                          </span>
+                        ))}
+                      </span>
+                      {view.overflow > 0 && (
+                        <span className="step-q-more">还有 {view.overflow} 项</span>
+                      )}
+                      <span className="step-q-foot">{confidenceText(view.confidence)}</span>
+                    </>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {logic && outputRows.length > 0 && (
           <div className="step-summary">
-            {summary.map((line) => (
-              <div className="step-summary-line" key={line} title={line}>
-                {line}
+            {visibleOutputs.map((row) => (
+              <div className="step-summary-line step-out-row" key={row.id}>
+                <span className="step-out-name mono" title={row.id}>
+                  {row.id}
+                </span>
+                <span
+                  className={`step-out-badge step-out-badge--${row.value === null ? 'none' : row.value ? 'true' : 'false'}`}
+                >
+                  {row.value === null ? 'None' : row.value ? '真' : '假'}
+                </span>
               </div>
             ))}
+            {hiddenOutputs > 0 && (
+              <div className="step-q-more">还有 {hiddenOutputs} 项</div>
+            )}
           </div>
         )}
 

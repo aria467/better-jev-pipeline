@@ -20,12 +20,13 @@ import { wouldCreateCycle } from '../lib/graph'
 import { useStudio } from '../lib/store'
 import { isLogicNode } from '../lib/types'
 import StepNode, { type StepNodeData } from './StepNode'
+import { QuestionPopover } from './QuestionPopover'
 import '@xyflow/react/dist/style.css'
 import './graph.css'
 
 const nodeTypes = { step: StepNode }
 const NODE_WIDTH = 300
-const NODE_HEIGHT = 190
+const NODE_HEIGHT = 280
 
 function GraphCanvasInner() {
   const {
@@ -42,6 +43,7 @@ function GraphCanvasInner() {
     deleteNode,
     addNode,
     setEdgeWhen,
+    closeQuestionEditor,
   } = useStudio()
 
   const { fitView, getNodes } = useReactFlow()
@@ -244,14 +246,18 @@ function GraphCanvasInner() {
         nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
-        onNodeClick={(_event, node) => {
+        onNodeClick={(event, node) => {
           setSelectedEdgeId(null)
           select(node.id)
+          // 问题块自己负责打开/切换弹层，这里不要把它关掉。
+          if ((event.target as HTMLElement | null)?.closest('.step-q')) return
+          closeQuestionEditor()
         }}
         onEdgeClick={(_event, edge) => setSelectedEdgeId(edge.id)}
         onPaneClick={() => {
           setSelectedEdgeId(null)
           select(null)
+          closeQuestionEditor()
         }}
         onNodesDelete={handleNodesDelete}
         onEdgesDelete={handleEdgesDelete}
@@ -398,6 +404,8 @@ function GraphCanvasInner() {
           </Panel>
         ) : null}
       </ReactFlow>
+
+      <QuestionPopover />
 
       {scenario.nodes.length === 0 && (
         <div className="gx-empty">

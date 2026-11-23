@@ -33,6 +33,12 @@ export interface Toast {
   message: string
 }
 
+/** 画布问题块的编辑弹层指向。 */
+export interface QuestionEditorState {
+  nodeId: string
+  questionId: string
+}
+
 interface StudioState {
   scenario: Scenario
   customScenarios: Scenario[]
@@ -44,12 +50,15 @@ interface StudioState {
   health: Health | null
   models: ModelInfo[]
   toasts: Toast[]
+  questionEditor: QuestionEditorState | null
 
   setHealth: (health: Health | null) => void
   setModels: (models: ModelInfo[]) => void
   notify: (message: string, kind?: Toast['kind']) => void
   dismissToast: (id: string) => void
   select: (id: string | null) => void
+  openQuestionEditor: (nodeId: string, questionId: string) => void
+  closeQuestionEditor: () => void
   switchScenario: (id: string) => void
   createScenario: (name: string) => boolean
   renameScenario: (id: string, name: string) => boolean
@@ -129,6 +138,7 @@ export const useStudio = create<StudioState>()(
       health: null,
       models: [],
       toasts: [],
+      questionEditor: null,
 
       setHealth: (health) => set({ health }),
       setModels: (models) => set({ models }),
@@ -140,6 +150,10 @@ export const useStudio = create<StudioState>()(
       dismissToast: (id) =>
         set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
       select: (id) => set({ selectedId: id }),
+      openQuestionEditor: (nodeId, questionId) =>
+        set({ questionEditor: { nodeId, questionId } }),
+      closeQuestionEditor: () =>
+        set((state) => (state.questionEditor ? { questionEditor: null } : {})),
 
       switchScenario: (id) => {
         const state = get()
@@ -166,6 +180,7 @@ export const useStudio = create<StudioState>()(
           running: false,
           runningId: null,
           logOpen: false,
+          questionEditor: null,
         })
         get().notify(`已切换到「${target.name}」`, 'info')
       },
@@ -204,6 +219,7 @@ export const useStudio = create<StudioState>()(
           running: false,
           runningId: null,
           logOpen: false,
+          questionEditor: null,
         })
         get().notify(`已创建场景「${trimmed}」`, 'success')
         return true
@@ -290,6 +306,7 @@ export const useStudio = create<StudioState>()(
           running: false,
           runningId: null,
           logOpen: false,
+          questionEditor: null,
         })
         get().notify(`已删除场景「${target.name}」`, 'success')
         return true
@@ -335,6 +352,7 @@ export const useStudio = create<StudioState>()(
           running: false,
           runningId: null,
           logOpen: false,
+          questionEditor: null,
         })
         get().notify(`场景已导入为「${name}」`, 'success')
         return true
@@ -458,6 +476,7 @@ export const useStudio = create<StudioState>()(
             scenario,
             results,
             selectedId: state.selectedId === id ? (nodes[0]?.id ?? null) : state.selectedId,
+            ...(state.questionEditor?.nodeId === id ? { questionEditor: null } : {}),
           }
         }),
 

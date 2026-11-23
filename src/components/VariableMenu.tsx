@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { Braces } from 'lucide-react'
+import type { VariableGroup } from '../lib/variables'
 
-export interface VariableGroup {
-  nodeId: string
-  title: string
-  items: { label: string; template: string }[]
-}
+export type { VariableGroup } from '../lib/variables'
 
 interface VariableMenuProps {
   variables: VariableGroup[]

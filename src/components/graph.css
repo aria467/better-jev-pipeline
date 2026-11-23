@@ -355,33 +355,6 @@
   text-overflow: ellipsis;
 }
 
-.step-dot {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--faint);
-  transition: background 150ms ease;
-}
-
-.step-dot--running {
-  background: var(--blue-500);
-  animation: step-pulse 1.4s ease-in-out infinite;
-}
-
-.step-dot--success {
-  background: var(--ok);
-}
-
-.step-dot--error {
-  background: var(--err);
-}
-
-.step-dot--skipped,
-.step-dot--stale {
-  background: var(--faint);
-}
-
 .step-glyph {
   display: inline-flex;
   flex: none;
@@ -495,6 +468,348 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- 问题块（卡片内） ---------- */
+
+.step-q-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.step-q {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 8px 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fbff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.step-q:hover {
+  border-color: var(--blue-300);
+  background: #f4f8ff;
+}
+
+.step-q.is-editing {
+  border-color: var(--blue-500);
+  background: var(--blue-50);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.step-q:focus-visible {
+  outline: 2px solid var(--blue-300);
+  outline-offset: 1px;
+}
+
+.step-q-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.step-q-id {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.step-q-type {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-0);
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.step-q-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-q-row {
+  display: grid;
+  grid-template-columns: minmax(44px, 84px) minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.step-q-name {
+  overflow: hidden;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.step-q-track {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf1fa;
+}
+
+.step-q-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #c9d9ec;
+  transition: width 150ms ease;
+}
+
+.step-q-row.is-chosen .step-q-name,
+.step-q-row.is-chosen .step-q-pct {
+  color: var(--blue-700);
+}
+
+.step-q-row.is-chosen .step-q-name {
+  font-weight: 600;
+}
+
+.step-q-row.is-chosen .step-q-fill {
+  background: linear-gradient(90deg, #60a5fa, #2563eb);
+}
+
+.step-q-pct {
+  color: var(--faint);
+  font-size: 9px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.step-q-more {
+  color: var(--faint);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.step-q-foot {
+  margin-top: 1px;
+  color: var(--faint);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.step-q-score {
+  color: var(--blue-700);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-q-score.is-none {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.step-q-noul {
+  color: var(--ink-2);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-q-gauge {
+  position: relative;
+  display: block;
+  height: 4px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: #eaf1fa;
+}
+
+.step-q-gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #2563eb);
+  opacity: 0.4;
+  transition: width 150ms ease;
+}
+
+.step-q-gauge-tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.step-q-gauge-marker {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--blue-600);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  transform: translate(-50%, -50%);
+  transition: left 150ms ease;
+}
+
+.step-q-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--faint);
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+
+/* ---------- 逻辑输出行 ---------- */
+
+.step-out-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-out-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.step-out-badge {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.step-out-badge--true {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.step-out-badge--false {
+  background: var(--bg-2);
+  color: var(--muted);
+}
+
+.step-out-badge--none {
+  border: 1px solid var(--line);
+  background: var(--bg-0);
+  color: var(--faint);
+}
+
+/* ---------- 问题编辑弹层 ---------- */
+
+.qv-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.qv-pop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 24px);
+  overflow: hidden;
+  pointer-events: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--ink);
+}
+
+.qv-pop:focus {
+  outline: none;
+}
+
+.qv-pop:focus-visible {
+  outline: 2px solid var(--blue-300);
+  outline-offset: 2px;
+}
+
+.qv-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.qv-head-title {
+  flex: none;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.qv-head-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.qv-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+}
+
+.qv-close:hover {
+  background: var(--blue-50);
+  color: var(--ink-2);
+}
+
+.qv-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+}
+
+.qv-body .insp-q-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 @keyframes step-spin {
   to {
     transform: rotate(360deg);
@@ -514,7 +829,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .step-spin,
-  .step-dot--running,
   .gx-live-dot,
   .graph-canvas .react-flow__edge.animated .react-flow__edge-path {
     animation: none;

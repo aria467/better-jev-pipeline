@@ -29,6 +29,7 @@ beforeEach(() => {
     runningId: null,
     logOpen: false,
     toasts: [],
+    questionEditor: null,
   })
 })
 
@@ -166,6 +167,30 @@ describe('node placement', () => {
     const created = useStudio.getState().scenario.nodes.find((node) => node.id === id)
     expect(created?.position.x).toBeGreaterThan(rightmost.position.x)
     expect(created?.position.y).toBe(rightmost.position.y)
+  })
+})
+
+describe('question editor popover state', () => {
+  it('opens and closes the editor target', () => {
+    useStudio.getState().openQuestionEditor('n1', 'reason')
+    expect(useStudio.getState().questionEditor).toEqual({
+      nodeId: 'n1',
+      questionId: 'reason',
+    })
+    useStudio.getState().closeQuestionEditor()
+    expect(useStudio.getState().questionEditor).toBe(null)
+  })
+
+  it('closes when the edited node is deleted', () => {
+    useStudio.getState().openQuestionEditor('n1', 'reason')
+    useStudio.getState().deleteNode('n1')
+    expect(useStudio.getState().questionEditor).toBe(null)
+  })
+
+  it('closes when switching scenarios', () => {
+    useStudio.getState().openQuestionEditor('n1', 'reason')
+    useStudio.getState().switchScenario('resume-screen')
+    expect(useStudio.getState().questionEditor).toBe(null)
   })
 })
 

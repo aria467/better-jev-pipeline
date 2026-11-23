@@ -10,11 +10,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { ancestorsOf, parentsOf } from '../lib/graph'
+import { parentsOf } from '../lib/graph'
 import { buildRequest } from '../lib/request'
 import { useStudio } from '../lib/store'
 import { isLogicNode } from '../lib/types'
-import type { JsonValue, RunRecord, Scenario } from '../lib/types'
+import { collectVariables } from '../lib/variables'
+import type { JsonValue, RunRecord } from '../lib/types'
 import { validateScenario } from '../lib/validate'
 import { JsonTree } from './JsonTree'
 import { LogicOutputsEditor } from './LogicOutputsEditor'
@@ -22,7 +23,6 @@ import { LogicResultView } from './LogicResultView'
 import { QuestionsEditor } from './QuestionsEditor'
 import { ResultView } from './ResultView'
 import { StateEditor } from './StateEditor'
-import type { VariableGroup } from './VariableMenu'
 import './inspector.css'
 
 type Tab = 'edit' | 'request' | 'response' | 'result'
@@ -33,79 +33,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'response', label: '响应 JSON' },
   { id: 'result', label: '结果' },
 ]
-
-const SAFE_PATH_SEGMENT = /^[^\s.{}]+$/u
-
-function collectVariables(
-  nodeId: string,
-  scenario: Scenario,
-  results: Record<string, RunRecord>,
-): VariableGroup[] {
-  const ancestors = ancestorsOf(nodeId, scenario.edges)
-  const groups: VariableGroup[] = []
-
-  for (const owner of scenario.nodes) {
-    if (!ancestors.has(owner.id)) continue
-    const record = results[owner.id]
-    if (record?.status !== 'success') continue
-    if (isLogicNode(owner)) {
-      const outputs = record.outputs
-      if (!outputs) continue
-      const items: VariableGroup['items'] = Object.entries(outputs).map(
-        ([outputId, value]) => ({
-          label: `${outputId} · ${value ? '真' : '假'}`,
-          template: `{{${owner.id}.${outputId}}}`,
-        }),
-      )
-      if (items.length > 0) {
-        groups.push({
-          nodeId: owner.id,
-          title: `${owner.title} · ${owner.id}`,
-          items,
-        })
-      }
-      continue
-    }
-    if (!record.response) continue
-    const items: VariableGroup['items'] = []
-    for (const [questionId, answer] of Object.entries(record.response.answers)) {
-      const base = `${owner.id}.${questionId}`
-      const push = (label: string, path: string) =>
-        items.push({
-          label: `${questionId} · ${label}`,
-          template: `{{${path}}}`,
-        })
-      if (answer.type === 'choice') {
-        push('choice', `${base}.choice`)
-        push('confidence', `${base}.confidence`)
-        for (const key of Object.keys(answer.probabilities ?? {})) {
-          if (SAFE_PATH_SEGMENT.test(key)) {
-            push(`${key} 概率`, `${base}.probabilities.${key}`)
-          }
-        }
-      } else if (answer.type === 'score') {
-        push('score', `${base}.score`)
-        push('confidence', `${base}.confidence`)
-        for (const key of Object.keys(answer.probabilities ?? {})) {
-          if (SAFE_PATH_SEGMENT.test(key)) {
-            push(`${key} 概率`, `${base}.probabilities.${key}`)
-          }
-        }
-      } else if (answer.type === 'noul') {
-        push('noul', `${base}.noul`)
-      }
-    }
-    if (items.length > 0) {
-      groups.push({
-        nodeId: owner.id,
-        title: `${owner.title} · ${owner.id}`,
-        items,
-      })
-    }
-  }
-
-  return groups
-}
 
 function ResponseErrorCard({ record }: { record: RunRecord }): JSX.Element {
   const [detailOpen, setDetailOpen] = useState(false)
