@@ -1,0 +1,641 @@
+/* 画布容器 */
+.graph-shell {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.graph-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+
+  --xy-handle-background-color: var(--blue-300);
+  --xy-handle-border-color: var(--surface);
+  --xy-controls-box-shadow: var(--shadow-sm);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--blue-50);
+  --xy-controls-button-color: var(--ink-2);
+  --xy-controls-button-color-hover: var(--blue-700);
+  --xy-controls-button-border-color: var(--line);
+}
+
+.graph-canvas .react-flow__background {
+  background: transparent;
+}
+
+.graph-canvas .react-flow__node {
+  font-family: var(--font-sans);
+}
+
+.graph-canvas .react-flow__panel {
+  margin: 14px;
+}
+
+/* 连线 */
+.graph-canvas .react-flow__edge-path {
+  stroke: #b9cfe8;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transition: stroke 150ms ease, stroke-width 150ms ease;
+}
+
+.graph-canvas .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--blue-500);
+}
+
+.graph-canvas .react-flow__edge.selected .react-flow__edge-path,
+.graph-canvas .react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--blue-600);
+  stroke-width: 1.5;
+}
+
+.graph-canvas .react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--blue-500);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 4;
+  animation: gx-dash 0.9s linear infinite;
+}
+
+.graph-canvas .react-flow__connection-path {
+  stroke: var(--blue-500);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.graph-canvas .react-flow__selection {
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px dashed var(--blue-300);
+}
+
+@keyframes gx-dash {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+
+/* 连接点 */
+.react-flow__handle.step-handle {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  border: 1px solid var(--surface);
+  border-radius: 999px;
+  background: var(--blue-300);
+  box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.28);
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.react-flow__handle.step-handle:hover,
+.react-flow__handle.step-handle.connecting,
+.react-flow__handle.step-handle.valid {
+  background: var(--blue-600);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+/* 左下角缩放控件 */
+.graph-canvas .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.graph-canvas .react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.graph-canvas .react-flow__controls-button:last-child {
+  border-bottom: 0;
+}
+
+.graph-canvas .react-flow__controls-button:hover {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.graph-canvas .react-flow__controls-button svg {
+  max-width: 12px;
+  max-height: 12px;
+  fill: currentColor;
+}
+
+/* 浮层工具条 */
+.gx-toolbar,
+.gx-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-glass);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.gx-toolbar-title {
+  padding: 0 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.gx-toolbar-sep,
+.gx-stat-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+}
+
+.gx-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.gx-tool:hover {
+  border-color: var(--line-strong);
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.gx-tool:active {
+  transform: translateY(0.5px);
+}
+
+.gx-tool--primary {
+  border-color: var(--blue-100);
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.gx-tool--primary:hover {
+  border-color: var(--blue-300);
+  background: var(--blue-100);
+}
+
+.gx-stats {
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.gx-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.gx-stat-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--blue-700);
+}
+
+.gx-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blue-500);
+  animation: step-pulse 1.4s ease-in-out infinite;
+}
+
+/* 空状态 */
+.gx-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.gx-empty-card {
+  max-width: 340px;
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-glass);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.gx-empty-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.gx-empty-desc {
+  margin: 8px 0 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.gx-empty-action {
+  height: 30px;
+  padding: 0 12px;
+}
+
+/* 节点卡片 */
+.step-card {
+  position: relative;
+  width: 300px;
+  padding: 12px 14px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+
+.step-card.step-selected {
+  border: 1.5px solid var(--blue-600);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), var(--shadow-sm);
+}
+
+.step-card.step-error::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--err);
+  content: '';
+}
+
+.step-card.step-muted {
+  border-style: dashed;
+  opacity: 0.62;
+}
+
+.step-card.step-muted.step-selected {
+  border-style: solid;
+  opacity: 1;
+}
+
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.step-index {
+  flex: none;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.step-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.step-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: background 150ms ease;
+}
+
+.step-dot--running {
+  background: var(--blue-500);
+  animation: step-pulse 1.4s ease-in-out infinite;
+}
+
+.step-dot--success {
+  background: var(--ok);
+}
+
+.step-dot--error {
+  background: var(--err);
+}
+
+.step-dot--skipped,
+.step-dot--stale {
+  background: var(--faint);
+}
+
+.step-glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+}
+
+.step-glyph--running {
+  color: var(--blue-600);
+}
+
+.step-glyph--success {
+  color: var(--ok);
+}
+
+.step-glyph--error {
+  color: var(--err);
+}
+
+.step-glyph--stale {
+  color: var(--warn);
+}
+
+.step-spin {
+  animation: step-spin 0.9s linear infinite;
+  transform-origin: center;
+}
+
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.step-chip {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-0);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+.step-summary {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--blue-100);
+  border-radius: 6px;
+  background: var(--blue-50);
+}
+
+.step-summary-line {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.step-summary-line + .step-summary-line {
+  border-top: 1px solid rgba(37, 99, 235, 0.08);
+}
+
+.step-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.step-state {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+}
+
+.step-state--running {
+  color: var(--blue-700);
+}
+
+.step-state--success {
+  color: var(--ok);
+}
+
+.step-state--error {
+  color: var(--err);
+}
+
+.step-state--stale {
+  color: var(--warn);
+}
+
+.step-metrics {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes step-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes step-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.32);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-spin,
+  .step-dot--running,
+  .gx-live-dot,
+  .graph-canvas .react-flow__edge.animated .react-flow__edge-path {
+    animation: none;
+  }
+}
+
+/* ---------- 逻辑步卡片 ---------- */
+
+.step-card--logic {
+  border-color: #cdd5f7;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%);
+}
+
+.step-card--logic .step-index {
+  color: var(--indigo);
+}
+
+.step-card--logic .step-chip:first-child {
+  border-color: #d7dbfb;
+  background: #f2f3ff;
+  color: var(--indigo);
+}
+
+/* ---------- 连线条件面板 ---------- */
+
+.gx-edge-panel {
+  width: 272px;
+  padding: 12px 14px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
+}
+
+.gx-edge-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.gx-edge-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.gx-edge-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gx-edge-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+}
+
+.gx-edge-close:hover {
+  background: var(--blue-50);
+  color: var(--ink-2);
+}
+
+.gx-edge-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.gx-edge-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gx-edge-field > span {
+  width: 30px;
+  flex: none;
+}
+
+.gx-edge-field .select {
+  flex: 1 1 auto;
+  height: 30px;
+}
+
+.gx-edge-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--faint);
+}
+
+.gx-edge-clear {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+}
+
+.gx-edge-clear:hover {
+  border-color: var(--blue-300);
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.gx-empty-card .gx-empty-action + .gx-empty-action {
+  margin-left: 8px;
+}
