@@ -156,6 +156,19 @@ describe('logic nodes and edge conditions', () => {
   })
 })
 
+describe('node placement', () => {
+  it('adds a new node to the right of the rightmost node', () => {
+    const nodes = useStudio.getState().scenario.nodes
+    const rightmost = nodes.reduce((anchor, node) =>
+      node.position.x > anchor.position.x ? node : anchor,
+    )
+    const id = useStudio.getState().addNode('api')
+    const created = useStudio.getState().scenario.nodes.find((node) => node.id === id)
+    expect(created?.position.x).toBeGreaterThan(rightmost.position.x)
+    expect(created?.position.y).toBe(rightmost.position.y)
+  })
+})
+
 describe('importing logic scenarios', () => {
   it('keeps logic nodes and edge conditions through import', () => {
     const source = structuredClone(DEFAULT_SCENARIO)

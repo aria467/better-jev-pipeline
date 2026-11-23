@@ -203,7 +203,7 @@ function GraphCanvasInner() {
     if (scenario.nodes.length === 0) return
 
     const graph = new graphlib.Graph()
-    graph.setGraph({ rankdir: 'TB', nodesep: 64, ranksep: 96 })
+    graph.setGraph({ rankdir: 'LR', nodesep: 64, ranksep: 96 })
     graph.setDefaultEdgeLabel(() => ({}))
 
     const measured = new Map(getNodes().map((node) => [node.id, node.measured]))
@@ -404,7 +404,7 @@ function GraphCanvasInner() {
           <div className="gx-empty-card">
             <h2 className="gx-empty-title">还没有决策步骤</h2>
             <p className="gx-empty-desc">
-              添加一个步骤，填写状态与问题；再把节点底部的连点拖到另一个节点顶部，就能建立依赖。
+              添加一个步骤，填写状态与问题；再把节点右侧的连点拖到另一个节点左侧，就能建立依赖。
             </p>
             <button
               type="button"

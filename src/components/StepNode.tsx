@@ -169,7 +169,7 @@ function StepNodeView({ data, isConnectable }: NodeProps<Node<StepNodeData>>) {
     <>
       <Handle
         type="target"
-        position={Position.Top}
+        position={Position.Left}
         className="step-handle"
         isConnectable={isConnectable}
       />
@@ -214,7 +214,7 @@ function StepNodeView({ data, isConnectable }: NodeProps<Node<StepNodeData>>) {
       </article>
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={Position.Right}
         className="step-handle"
         isConnectable={isConnectable}
       />

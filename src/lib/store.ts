@@ -389,8 +389,15 @@ export const useStudio = create<StudioState>()(
       addNode: (kind = 'api') => {
         const scenario = get().scenario
         const id = nextNodeId(scenario)
-        const maxY = scenario.nodes.reduce((max, node) => Math.max(max, node.position.y), 0)
-        const position = { x: 0, y: maxY + 220 }
+        // 画布按从左往右排布，新节点放在最右侧节点之后。
+        const rightmost = scenario.nodes.reduce<StepNode | null>(
+          (anchor, node) =>
+            !anchor || node.position.x > anchor.position.x ? node : anchor,
+          null,
+        )
+        const position = rightmost
+          ? { x: rightmost.position.x + 380, y: rightmost.position.y }
+          : { x: 0, y: 0 }
         const node: StepNode =
           kind === 'logic'
             ? {
@@ -425,7 +432,7 @@ export const useStudio = create<StudioState>()(
         const copy = structuredClone(source)
         copy.id = newId
         copy.title = `${source.title} 副本`
-        copy.position = { x: source.position.x + 48, y: source.position.y + 120 }
+        copy.position = { x: source.position.x + 120, y: source.position.y + 48 }
         set((state) => ({
           scenario: { ...state.scenario, nodes: [...state.scenario.nodes, copy] },
           selectedId: newId,

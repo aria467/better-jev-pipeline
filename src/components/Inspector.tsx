@@ -206,7 +206,7 @@ export function Inspector(): JSX.Element {
           </div>
           <p className="insp-empty-title">选择一个节点</p>
           <p className="insp-empty-text">
-            在画布上点击任意步骤，即可编辑它的 State、问题与请求 JSON。也可以从上游节点底部拖线到本节点顶部来建立依赖。
+            在画布上点击任意步骤，即可编辑它的 State、问题与请求 JSON。也可以从上游节点右侧拖线到本节点左侧来建立依赖。
           </p>
         </div>
       </aside>
@@ -344,7 +344,7 @@ export function Inspector(): JSX.Element {
               ) : (
                 <p className="insp-hint">还没有上游节点。</p>
               )}
-              <p className="insp-hint">从上游节点底部拖线到本节点顶部可新增依赖。</p>
+              <p className="insp-hint">从上游节点右侧拖线到本节点左侧可新增依赖。</p>
             </section>
 
             {logicNode ? (
