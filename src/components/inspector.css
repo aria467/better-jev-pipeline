@@ -1232,3 +1232,533 @@
   flex: none;
   margin-left: auto;
 }
+
+/* ---------- 逻辑构建器 ---------- */
+
+.insp-logic-head {
+  flex-wrap: nowrap;
+}
+
+.insp-logic-head .insp-field-label {
+  flex: none;
+}
+
+.insp-logic-head .insp-q-id {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.insp-logic-modes {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 6px;
+}
+
+.insp-logic-mode {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.insp-logic-mode:hover {
+  color: var(--ink);
+}
+
+.insp-logic-mode.is-active {
+  background: var(--surface);
+  color: var(--indigo);
+  box-shadow: var(--shadow-sm);
+}
+
+.insp-logic-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insp-logic-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px 8px 7px 9px;
+  border: 1px solid #e3e6fb;
+  border-left: 2px solid #c7cdf7;
+  border-radius: 7px;
+  background: #fafbff;
+}
+
+.insp-logic-group[data-depth="1"] {
+  margin-left: 8px;
+  background: #f6f7ff;
+  border-left-color: #b9c0f4;
+}
+
+.insp-logic-group[data-depth="2"],
+.insp-logic-group[data-depth="3"] {
+  margin-left: 8px;
+  background: #f3f4fe;
+  border-left-color: #a9b1ef;
+}
+
+.insp-logic-group[data-depth="3"] {
+  margin-left: 0;
+}
+
+.insp-logic-group.is-negated {
+  border-left-color: var(--indigo);
+}
+
+.insp-logic-group-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.insp-logic-group-op {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 122px;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+
+.insp-logic-group-head .insp-logic-preview {
+  margin-left: auto;
+}
+
+.insp-logic-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.insp-logic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.insp-logic-row.is-bool {
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+}
+
+.insp-logic-row.is-negated .insp-logic-operand {
+  border-color: #c7cdf7;
+  background: #f7f7ff;
+}
+
+.insp-logic-operand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.insp-logic-operand[data-side="right"] {
+  justify-self: end;
+  width: fit-content;
+}
+
+.insp-logic-operand[data-kind="ref"] {
+  color: var(--indigo);
+  background: #f8f8ff;
+}
+
+.insp-logic-operand[data-kind="string"] {
+  color: #7a4d0a;
+  background: #fffbf2;
+}
+
+.insp-logic-operand[data-kind="arith"] {
+  color: #0f6b60;
+  background: #f4fdfb;
+}
+
+.insp-logic-operand[data-kind="boolean"] {
+  color: #6b46c1;
+}
+
+.insp-logic-operand.is-empty {
+  border-style: dashed;
+  color: var(--faint);
+  background: transparent;
+}
+
+.insp-logic-operand:hover {
+  border-color: var(--blue-300);
+}
+
+.insp-logic-operand-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.insp-logic-op-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 40px;
+}
+
+.insp-logic-op {
+  width: 100%;
+  padding: 2px 11px 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.insp-logic-op-chevron {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  color: var(--faint);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.insp-logic-neg {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.insp-logic-neg.is-on {
+  border-color: var(--indigo);
+  background: #eef0ff;
+  color: var(--indigo);
+}
+
+.insp-logic-del {
+  width: 20px;
+  height: 20px;
+}
+
+.insp-logic-preview {
+  min-width: 18px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.insp-logic-preview.is-true {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.insp-logic-preview.is-false {
+  color: var(--muted);
+  background: var(--blue-50);
+}
+
+.insp-logic-preview.is-empty {
+  visibility: hidden;
+}
+
+.insp-logic-booltag {
+  padding: 1px 5px;
+  border: 1px solid #e3e6fb;
+  border-radius: 4px;
+  background: #f4f5ff;
+  color: var(--indigo);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.insp-logic-issue {
+  grid-column: 1 / -1;
+  margin: 1px 0 0;
+  padding-left: 14px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--err);
+}
+
+.insp-logic-group > .insp-logic-issue {
+  grid-column: auto;
+}
+
+.insp-logic-group-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+.insp-logic-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--blue-700);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.insp-logic-add:hover {
+  background: var(--blue-50);
+}
+
+.insp-logic-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--blue-100);
+  border-radius: 7px;
+  background: var(--blue-50);
+}
+
+.insp-logic-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.insp-logic-picker-head .insp-icon-btn {
+  width: 22px;
+  height: 22px;
+}
+
+.insp-logic-picker .insp-logic-modes {
+  align-self: flex-start;
+  background: var(--surface);
+}
+
+.insp-logic-refpick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.insp-logic-reflist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  padding: 2px;
+  overflow-y: auto;
+  border: 1px solid var(--blue-100);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.insp-logic-refgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.insp-logic-refgroup-title {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 5px 1px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--faint);
+}
+
+.insp-logic-refgroup-title .mono {
+  font-weight: 400;
+}
+
+.insp-logic-refitem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.insp-logic-refitem:hover {
+  background: var(--blue-50);
+}
+
+.insp-logic-refitem-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.insp-logic-refitem-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.insp-logic-refitem-value {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.insp-logic-refitem-path {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--faint);
+}
+
+.insp-logic-type {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.insp-logic-type.is-number {
+  background: #eef4ff;
+  color: var(--blue-700);
+}
+
+.insp-logic-type.is-string {
+  background: #fff6e8;
+  color: #8a5a10;
+}
+
+.insp-logic-type.is-boolean {
+  background: #f1ecff;
+  color: var(--indigo);
+}
+
+.insp-logic-manual {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+
+.insp-logic-manual .insp-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10.5px;
+}
+
+.insp-logic-manual .insp-btn {
+  flex: 0 0 auto;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.insp-logic-valuemode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.insp-logic-valuemode .insp-input {
+  font-size: 11.5px;
+}
+
+.insp-logic-boolpick {
+  flex-direction: row;
+}
+
+.insp-logic-boolpick .insp-btn.is-active {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
+.insp-logic-arith-value {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ok);
+}
+
+.insp-logic-graphfoot .insp-logic-refcount {
+  flex: none;
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.insp-logic-generated {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.insp-logic-generated summary {
+  cursor: pointer;
+  color: var(--blue-700);
+}
+
+.insp-logic-generated code {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #f8faff;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

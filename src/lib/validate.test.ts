@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PRESETS } from './presets'
 import { validateScenario } from './validate'
+import type { BuilderNode } from './logic-builder'
 import type { ApiStepNode, Scenario } from './types'
 
 describe('validateScenario', () => {
@@ -90,6 +91,49 @@ function messages(scenario: Scenario): string {
   return validateScenario(scenario).issues.map((issue) => issue.message).join('；')
 }
 
+function graphScenario(expression = 'stale'): Scenario {
+  const scenario = logicScenario()
+  const node = scenario.nodes[1]
+  if (node.kind !== 'logic') throw new Error('shape')
+  const graph: BuilderNode = {
+    kind: 'group',
+    id: 'g1',
+    op: 'and',
+    negated: false,
+    items: [
+      {
+        kind: 'compare',
+        id: 'c1',
+        op: '>',
+        negated: false,
+        left: { kind: 'ref', path: 'n1.dept.probabilities.财务' },
+        right: { kind: 'number', text: '0.4' },
+      },
+      {
+        kind: 'compare',
+        id: 'c2',
+        op: '>',
+        negated: false,
+        left: { kind: 'ref', path: 'n1.urgent.noul' },
+        right: { kind: 'number', text: '0.5' },
+      },
+    ],
+  }
+  node.outputs[0].expression = expression
+  node.outputs[0].graph = graph
+  return scenario
+}
+
+function firstRow(scenario: Scenario) {
+  const node = scenario.nodes[1]
+  if (node.kind !== 'logic') throw new Error('shape')
+  const graph = node.outputs[0].graph
+  if (!graph || graph.kind !== 'group' || graph.items[0]?.kind !== 'compare') {
+    throw new Error('shape')
+  }
+  return graph.items[0]
+}
+
 describe('logic step validation', () => {
   it('accepts a wired logic step and its boolean template', () => {
     const result = validateScenario(logicScenario())
@@ -126,6 +170,27 @@ describe('logic step validation', () => {
     const target = missing.nodes[1]
     if (target.kind === 'logic') target.outputs[0].expression = '{{n9.x}} > 0.5'
     expect(messages(missing)).toContain('不存在的节点')
+  })
+
+  it('validates structured graphs instead of stale text', () => {
+    const scenario = graphScenario('这不是表达式')
+    expect(validateScenario(scenario).errorCount, messages(scenario)).toBe(0)
+  })
+
+  it('rejects non-ancestor and self references inside a graph', () => {
+    const downstream = graphScenario()
+    firstRow(downstream).left = { kind: 'ref', path: 'n3.q.noul' }
+    expect(messages(downstream)).toContain('不是该节点的上游')
+
+    const self = graphScenario()
+    firstRow(self).left = { kind: 'ref', path: 'n2.flag' }
+    expect(messages(self)).toContain('不能引用自身')
+  })
+
+  it('reports incomplete graph conditions', () => {
+    const scenario = graphScenario()
+    firstRow(scenario).right = { kind: 'number', text: '' }
+    expect(messages(scenario)).toContain('右值不能为空')
   })
 
   it('validates edge conditions against logic outputs', () => {

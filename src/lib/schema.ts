@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeLogicOutputs } from './logic-builder'
 import type { JsonValue, Scenario } from './types'
 
 const jsonValue: z.ZodType<JsonValue> = z.lazy(() =>
@@ -59,6 +60,9 @@ const apiNodeSchema = z.object({
 const logicOutputSchema = z.object({
   id: z.string().min(1),
   expression: z.string(),
+  // 图形结构由 normalizeLogicOutputs 守卫；zod 只负责保留字段，避免导入时被剥掉。
+  graph: z.unknown().optional(),
+  mode: z.enum(['graph', 'text']).optional(),
 })
 
 const logicNodeSchema = z.object({
@@ -95,5 +99,5 @@ export function parseScenario(input: unknown): { scenario?: Scenario; error?: st
   if (!parsed.success) {
     return { error: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('；') }
   }
-  return { scenario: parsed.data as Scenario }
+  return { scenario: normalizeLogicOutputs(parsed.data as Scenario) }
 }

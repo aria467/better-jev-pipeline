@@ -1,6 +1,6 @@
 import { extractRefs } from './template'
 import { isLogicNode } from './types'
-import type { JsonValue, LogicOutput, Scenario } from './types'
+import type { JsonValue, LogicOutput, Question, Scenario } from './types'
 
 export type LogicValueType = 'number' | 'string' | 'boolean'
 
@@ -27,7 +27,7 @@ export type LogicBinaryOp =
   | '/'
 
 export type LogicAst =
-  | { type: 'number'; value: number; index: number }
+  | { type: 'number'; value: number; raw?: string; index: number }
   | { type: 'string'; value: string; index: number }
   | { type: 'boolean'; value: boolean; index: number }
   | { type: 'ref'; path: string; index: number }
@@ -286,7 +286,7 @@ class Parser {
   private parsePrimary(): LogicAst {
     const token = this.next()
     if (token.type === 'number') {
-      return { type: 'number', value: token.number ?? 0, index: token.index }
+      return { type: 'number', value: token.number ?? 0, raw: token.value, index: token.index }
     }
     if (token.type === 'string') {
       return { type: 'string', value: token.value, index: token.index }
@@ -315,7 +315,7 @@ class Parser {
   }
 }
 
-const MAX_EXPRESSION_LENGTH = 2000
+export const MAX_EXPRESSION_LENGTH = 2000
 
 export function parseExpression(text: string): { ast: LogicAst } | { error: LogicError } {
   if (!text.trim()) return { error: { message: '表达式不能为空', index: 0 } }
@@ -364,6 +364,47 @@ export function collectLogicRefs(expression: string): string[] {
 
 export type RefTypeResolver = (path: string) => { type: LogicValueType } | { error: string }
 
+/** 引用路径的一段不能包含空白、点或花括号，否则 DSL 无法写出。 */
+export const SAFE_PATH_SEGMENT = /^[^\s.{}]+$/u
+
+export interface QuestionRefField {
+  key: string
+  type: LogicValueType
+}
+
+/**
+ * 一个问题能产出哪些可引用字段。
+ * 引用选择器与 refTypeInScenario 共用这一份规则，避免“目录里有、校验不认”的分裂。
+ */
+export function questionRefFields(question: Question): QuestionRefField[] {
+  if (question.type === 'box') return []
+  if (question.type === 'noul') return [{ key: 'noul', type: 'number' }]
+
+  if (question.type === 'choice') {
+    const fields: QuestionRefField[] = [
+      { key: 'choice', type: 'string' },
+      { key: 'confidence', type: 'number' },
+    ]
+    for (const option of question.options) {
+      if (SAFE_PATH_SEGMENT.test(option.name)) {
+        fields.push({ key: `probabilities.${option.name}`, type: 'number' })
+      }
+    }
+    return fields
+  }
+
+  const fields: QuestionRefField[] = [
+    { key: 'score', type: 'number' },
+    { key: 'confidence', type: 'number' },
+  ]
+  for (const level of question.levels) {
+    if (SAFE_PATH_SEGMENT.test(level.label)) {
+      fields.push({ key: `probabilities.${level.label}`, type: 'number' })
+    }
+  }
+  return fields
+}
+
 /** 根据场景结构推断引用路径的静态类型（不依赖运行结果）。 */
 export function refTypeInScenario(scenario: Scenario, path: string): { type: LogicValueType } | { error: string } {
   const parts = path.split('.').filter(Boolean)
@@ -388,26 +429,22 @@ export function refTypeInScenario(scenario: Scenario, path: string): { type: Log
     return { error: 'box 类型的答案暂不支持参与逻辑计算' }
   }
 
-  const field = rest[0]
-  const extra = rest.length > 1
-  if (question.type === 'choice') {
-    if (!field) return { error: `{{${path}}} 的 choice 结果是对象，请使用 .choice、.confidence 或 .probabilities.<选项>` }
-    if (field === 'choice' && !extra) return { type: 'string' }
-    if (field === 'confidence' && !extra) return { type: 'number' }
-    if (field === 'probabilities' && rest.length === 2) return { type: 'number' }
-    return { error: `choice 结果没有字段 ${rest.join('.')}` }
+  const field = rest.join('.')
+  if (!field) {
+    const hint =
+      question.type === 'choice'
+        ? '.choice、.confidence 或 .probabilities.<选项>'
+        : question.type === 'score'
+          ? '.score、.confidence 或 .probabilities.<等级>'
+          : '.noul'
+    return { error: `{{${path}}} 的 ${question.type} 结果是对象，请使用 ${hint}` }
   }
-  if (question.type === 'score') {
-    if (!field) return { error: `{{${path}}} 的 score 结果是对象，请使用 .score、.confidence 或 .probabilities.<等级>` }
-    if (field === 'score' && !extra) return { type: 'number' }
-    if (field === 'confidence' && !extra) return { type: 'number' }
-    if (field === 'probabilities' && rest.length === 2) return { type: 'number' }
-    if (field === 'legend') return { error: 'score 的 legend 字段暂不支持参与逻辑计算' }
-    return { error: `score 结果没有字段 ${rest.join('.')}` }
+  if (question.type === 'score' && rest[0] === 'legend') {
+    return { error: 'score 的 legend 字段暂不支持参与逻辑计算' }
   }
-  if (!field) return { error: `{{${path}}} 的 noul 结果是对象，请使用 .noul` }
-  if (field === 'noul' && !extra) return { type: 'number' }
-  return { error: `noul 结果没有字段 ${rest.join('.')}` }
+  const match = questionRefFields(question).find((item) => item.key === field)
+  if (match) return { type: match.type }
+  return { error: `${question.type} 结果没有字段 ${field}` }
 }
 
 function typeName(type: LogicValueType): string {

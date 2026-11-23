@@ -224,12 +224,22 @@ try {
   await page.locator('.react-flow__node[data-id="n2"]').click()
   await page.waitForTimeout(400)
   console.log(`logic tabs: ${(await page.locator('.insp-tab').allInnerTexts()).join(' | ')}`)
+  const logicCards = page.locator('.insp-logic-card')
+  const firstCard = logicCards.first()
+  const secondCard = logicCards.nth(1)
   const outputIds = await page
     .locator('.insp-logic-card .insp-q-id')
     .evaluateAll((nodes) => nodes.map((node) => node.value))
-  console.log(`logic outputs: ${outputIds.join(',')} · cards ${await page.locator('.insp-logic-card').count()}`)
+  const groupLabels = await page
+    .locator('.insp-logic-group-op')
+    .evaluateAll((nodes) => nodes.map((node) => node.options[node.selectedIndex]?.text))
+  console.log(`logic outputs: ${outputIds.join(',')} · cards ${await logicCards.count()}`)
+  console.log(
+    `logic builder: groups ${await page.locator('.insp-logic-group').count()} · rows ${await page.locator('.insp-logic-row').count()} · ${groupLabels.join(' / ')}`,
+  )
+  await page.screenshot({ path: '/tmp/jev-e2e-builder.png' })
 
-  // 运行逻辑步（会先运行上游 n1），让变量菜单可用。
+  // 运行逻辑步（会先运行上游 n1），查看行级与输出级预览。
   await page.getByRole('button', { name: '运行此节点' }).click()
   await page.waitForFunction(
     () => document.querySelector('.react-flow__node[data-id="n2"] .step-state--success') !== null,
@@ -237,13 +247,20 @@ try {
     { timeout: 120000 },
   )
   await page.waitForTimeout(500)
-  const logicExpr = page.locator('.insp-logic-expr').first()
-  const originalExpr = await logicExpr.inputValue()
   console.log(
-    `logic run: summary ${(await page.locator('.step-card--logic .step-summary').innerText()).replace(/\n/g, ' + ')} · preview ${(await page.locator('.insp-logic-value').first().innerText().catch(() => 'none'))}`,
+    `logic run: summary ${(await page.locator('.step-card--logic .step-summary').innerText()).replace(/\n/g, ' + ')} · previews ${(await page.locator('.insp-logic-card .insp-logic-preview').allInnerTexts()).filter(Boolean).join(' / ')}`,
   )
 
-  await page.locator('.insp-logic-card .insp-var-trigger').first().click()
+  // 文本模式：变量插入、语法错误与运行拦截。
+  await firstCard.locator('.insp-logic-mode', { hasText: '文本' }).click()
+  await page.waitForTimeout(250)
+  const logicExpr = firstCard.locator('.insp-logic-expr')
+  const originalExpr = await logicExpr.inputValue()
+  console.log(
+    `logic text round-trip: ${originalExpr.includes('AND') && !/NAND|XNOR/.test(originalExpr)}`,
+  )
+
+  await firstCard.locator('.insp-var-trigger').click()
   await page.waitForTimeout(250)
   const varItems = await page.locator('.insp-var-item').count()
   if (varItems > 0) await page.locator('.insp-var-item').first().click()
@@ -253,16 +270,35 @@ try {
 
   await logicExpr.fill(`${originalExpr} AND`)
   await page.waitForTimeout(300)
-  console.log(`logic syntax error: ${await page.locator('.insp-logic-error').first().innerText()}`)
+  console.log(
+    `logic syntax error: ${await firstCard.locator('.insp-logic-error').first().innerText()}`,
+  )
   await page.getByRole('button', { name: /运行全部/ }).click()
   await page.waitForTimeout(400)
   const blockToast = await page.locator('.toast').last().innerText().catch(() => 'none')
   console.log(`logic run blocked: ${blockToast.includes('错误')}`)
 
-  // 改成常量表达式，得到确定性的门控结果。
+  // 改成常量表达式，再切回图形，得到确定性的门控结果。
   await logicExpr.fill('1 > 0')
-  await page.locator('.insp-logic-expr').nth(1).fill('1 < 0')
+  await secondCard.locator('.insp-logic-mode', { hasText: '文本' }).click()
+  await page.waitForTimeout(250)
+  await secondCard.locator('.insp-logic-expr').fill('1 < 0')
+  await page.waitForTimeout(300)
+  await firstCard.locator('.insp-logic-mode', { hasText: '图形' }).click()
+  await secondCard.locator('.insp-logic-mode', { hasText: '图形' }).click()
   await page.waitForTimeout(400)
+  console.log(
+    `logic text->graph: rows ${await firstCard.locator('.insp-logic-row').count()} · operands ${(await firstCard.locator('.insp-logic-operand').allInnerTexts()).join(' / ')}`,
+  )
+
+  await firstCard.locator('.insp-logic-group-head .insp-logic-neg').first().click()
+  await page.waitForTimeout(250)
+  console.log(
+    `logic negate: ${await firstCard.locator('.insp-logic-preview').first().innerText()}`,
+  )
+  await firstCard.locator('.insp-logic-group-head .insp-logic-neg').first().click()
+  await page.waitForTimeout(250)
+
   await page.getByRole('button', { name: /运行全部/ }).click()
   await page.waitForFunction(
     () =>
@@ -307,8 +343,23 @@ try {
   console.log(
     `added logic: cards ${await page.locator('.step-card').count()} · logic ${await page.locator('.step-card--logic').count()} · title ${await page.locator('.insp-title-input').inputValue()}`,
   )
-  await page.locator('.insp-logic-expr').first().fill('1 > 0')
-  await page.waitForTimeout(400)
+  const standalone = page.locator('.insp-logic-card').first()
+  await standalone.locator('.insp-logic-row').first().locator('.insp-logic-operand').first().click()
+  await standalone.locator('.insp-logic-picker .insp-logic-mode', { hasText: '数字' }).click()
+  await standalone.locator('.insp-logic-picker input[aria-label="数字值"]').fill('1')
+  await standalone.locator('.insp-logic-picker button[aria-label="关闭值编辑器"]').click()
+  await page.waitForTimeout(300)
+  await standalone
+    .locator('.insp-logic-row')
+    .first()
+    .locator('.insp-logic-operand[data-side="right"]')
+    .click()
+  await standalone.locator('.insp-logic-picker input[aria-label="数字值"]').fill('0')
+  await standalone.locator('.insp-logic-picker button[aria-label="关闭值编辑器"]').click()
+  await page.waitForTimeout(300)
+  console.log(
+    `standalone expression: ${await standalone.locator('.insp-logic-generated code').evaluate((el) => el.textContent)}`,
+  )
   await page.getByRole('button', { name: '运行此节点' }).click()
   await page.waitForFunction(
     () => document.querySelectorAll('.step-card--logic .step-state--success').length >= 2,

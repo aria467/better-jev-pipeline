@@ -9,6 +9,11 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { collectLogicRefs } from '../lib/logic'
+import {
+  collectBuilderRefs,
+  isBuilderTree,
+  logicOutputExpression,
+} from '../lib/logic-builder'
 import { isLogicNode } from '../lib/types'
 import type {
   NodeStatus,
@@ -61,7 +66,9 @@ function StatusGlyph({ tone }: { tone: string }) {
 function buildLogicChips(node: Extract<StepNodeModel, { kind: 'logic' }>): string[] {
   const refs = new Set<string>()
   for (const output of node.outputs) {
-    for (const ref of collectLogicRefs(output.expression)) refs.add(ref)
+    const graph = output.graph && isBuilderTree(output.graph) ? output.graph : null
+    const source = graph ? collectBuilderRefs(graph) : collectLogicRefs(logicOutputExpression(output))
+    for (const ref of source) refs.add(ref)
   }
   return [
     '逻辑',

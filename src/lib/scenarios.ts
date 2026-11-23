@@ -1,3 +1,4 @@
+import { normalizeLogicOutputs } from './logic-builder'
 import type { Scenario, StepNode } from './types'
 
 export interface ScenarioOption {
@@ -65,7 +66,18 @@ function isNodeLike(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false
   const node = value as Partial<StepNode>
   if (typeof node.id !== 'string' || !node.position) return false
-  if (node.kind === 'logic') return Array.isArray(node.outputs)
+  if (node.kind === 'logic') {
+    return (
+      Array.isArray(node.outputs) &&
+      node.outputs.every(
+        (output) =>
+          Boolean(output) &&
+          typeof output === 'object' &&
+          typeof output.id === 'string' &&
+          typeof output.expression === 'string',
+      )
+    )
+  }
   return true
 }
 
@@ -92,10 +104,10 @@ export function restoreScenarios(
 ): { scenario: Scenario; customScenarios: Scenario[] } {
   const scenarioInput = isScenarioLike(storedScenario) ? storedScenario : options.fallback
   const preset = options.presets.find((item) => item.id === scenarioInput.id)
-  const scenario = preset ? structuredClone(preset) : scenarioInput
+  const scenario = preset ? structuredClone(preset) : normalizeLogicOutputs(scenarioInput)
   const presetIds = new Set(options.presets.map((item) => item.id))
   const customs = Array.isArray(storedCustoms)
-    ? storedCustoms.filter(isScenarioLike)
+    ? storedCustoms.filter(isScenarioLike).map(normalizeLogicOutputs)
     : []
   return {
     scenario,

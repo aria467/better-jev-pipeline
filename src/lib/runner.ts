@@ -1,5 +1,6 @@
 import { callSystemOne } from './api'
 import { evaluateLogicOutputs } from './logic'
+import { logicOutputExpression } from './logic-builder'
 import { buildRequest } from './request'
 import { buildValueScope, resolveScopeValue } from './scope'
 import { isLogicNode } from './types'
@@ -89,8 +90,12 @@ export async function executeOrder({
 
       try {
         const scope = buildValueScope(nodeId, scenario, results)
-        const evaluation = evaluateLogicOutputs(node.outputs, (path) =>
-          resolveScopeValue(scope, path),
+        const evaluation = evaluateLogicOutputs(
+          node.outputs.map((output) => ({
+            id: output.id,
+            expression: logicOutputExpression(output),
+          })),
+          (path) => resolveScopeValue(scope, path),
         )
         const ms = Date.now() - startedAt
         if (evaluation.errors.length > 0) {

@@ -1,4 +1,5 @@
 import { ancestorsOf, findCycle } from './graph'
+import { checkBuilderNode, isBuilderTree } from './logic-builder'
 import { checkLogicExpression, refTypeInScenario } from './logic'
 import { extractRefs } from './template'
 import { isLogicNode } from './types'
@@ -37,15 +38,27 @@ function validateLogicOutputs(
     else ids.add(id)
 
     const label = id || '(未命名)'
-    if (!output.expression.trim()) {
-      add(`输出「${label}」的表达式为空`)
-      continue
+    const graph = output.graph && isBuilderTree(output.graph) ? output.graph : null
+    let refs: string[] = []
+
+    if (graph) {
+      const checked = checkBuilderNode(graph, resolveRef)
+      for (const issue of checked.issues) add(`输出「${label}」：${issue.message}`)
+      refs = checked.refs
+    } else {
+      if (output.graph) {
+        add(`输出「${label}」的图形结构损坏，已按文本校验`, 'warning')
+      }
+      if (!output.expression.trim()) {
+        add(`输出「${label}」的表达式为空`)
+        continue
+      }
+      const checked = checkLogicExpression(output.expression, resolveRef)
+      if ('error' in checked) add(`输出「${label}」：${checked.error.message}`)
+      refs = checked.refs
     }
 
-    const checked = checkLogicExpression(output.expression, resolveRef)
-    if ('error' in checked) add(`输出「${label}」：${checked.error.message}`)
-
-    for (const ref of checked.refs) {
+    for (const ref of refs) {
       const parts = ref.split('.')
       const ownerId = parts[0]
       const key = parts[1]

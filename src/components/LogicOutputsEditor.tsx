@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { ancestorsOf } from '../lib/graph'
+import {
+  checkBuilderNode,
+  collectScenarioRefs,
+  emptyBuilderTree,
+  expressionToTree,
+  formatBuilderTree,
+  normalizeBuilderTree,
+} from '../lib/logic-builder'
+import type { BuilderNode, ScenarioRefGroup } from '../lib/logic-builder'
 import {
   checkLogicExpression,
   evaluateExpression,
@@ -9,13 +17,16 @@ import {
   parseExpression,
   refTypeInScenario,
 } from '../lib/logic'
+import type { RefTypeResolver } from '../lib/logic'
 import { buildValueScope, resolveScopeValue } from '../lib/scope'
+import type { TemplateScope } from '../lib/template'
 import type {
   LogicOutput,
   LogicStepNode,
   RunRecord,
   Scenario,
 } from '../lib/types'
+import { LogicBuilder } from './LogicBuilder'
 import { VariableMenu } from './VariableMenu'
 import type { VariableGroup } from './VariableMenu'
 
@@ -27,12 +38,6 @@ interface LogicOutputsEditorProps {
   onChange: (outputs: LogicOutput[]) => void
 }
 
-interface CheckState {
-  error?: string
-  preview?: boolean
-  previewError?: string
-}
-
 const ID_PATTERN = /[^A-Za-z0-9_-]/g
 
 function nextOutputId(outputs: LogicOutput[]): string {
@@ -42,21 +47,80 @@ function nextOutputId(outputs: LogicOutput[]): string {
   return `out${index}`
 }
 
-function OutputRow(props: {
+interface OutputCardProps {
   output: LogicOutput
-  check: CheckState
-  variables: VariableGroup[]
   canRemove: boolean
-  onChange: (patch: Partial<LogicOutput>) => void
+  variables: VariableGroup[]
+  refGroups: ScenarioRefGroup[]
+  scope: TemplateScope
+  resolveRef: RefTypeResolver
+  onChange: (next: LogicOutput) => void
   onRemove: () => void
-}): JSX.Element {
-  const { output, check, variables, canRemove, onChange, onRemove } = props
+}
+
+function hasScopeValues(scope: TemplateScope): boolean {
+  return Object.keys(scope.nodes).length > 0
+}
+
+function LogicOutputCard(props: OutputCardProps): JSX.Element {
+  const { output, canRemove, variables, refGroups, scope, resolveRef, onChange, onRemove } = props
   const [idDraft, setIdDraft] = useState(output.id)
+  const [localError, setLocalError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const hasValues = hasScopeValues(scope)
 
   useEffect(() => {
     setIdDraft(output.id)
   }, [output.id])
+
+  const converted = useMemo<{ tree: BuilderNode | null; error?: string }>(() => {
+    if (output.graph) {
+      const normalized = normalizeBuilderTree(output.graph)
+      if (normalized) return { tree: normalized }
+    }
+    if (!output.expression.trim()) return { tree: emptyBuilderTree() }
+    const result = expressionToTree(output.expression, resolveRef)
+    if ('error' in result) return { tree: null, error: result.error.message }
+    return { tree: result.tree }
+  }, [output.graph, output.expression, resolveRef])
+
+  const graph = converted.tree
+  const preferred = output.mode ?? 'graph'
+  const mode: 'graph' | 'text' = preferred === 'text' || !graph ? 'text' : 'graph'
+
+  const check = useMemo(
+    () => (graph ? checkBuilderNode(graph, resolveRef) : null),
+    [graph, resolveRef],
+  )
+
+  const preview = useMemo(() => {
+    if (!graph || (check && check.issues.length > 0)) return null
+    const text = formatBuilderTree(graph)
+    if (!text) return null
+    const parsed = parseExpression(text)
+    if ('error' in parsed) return null
+    const evaluated = evaluateExpression(parsed.ast, (path) => resolveScopeValue(scope, path))
+    if ('error' in evaluated || typeof evaluated.value !== 'boolean') return null
+    return evaluated.value
+  }, [graph, check, scope])
+
+  const textCheck = useMemo(() => {
+    if (mode !== 'text') return {}
+    if (!output.expression.trim()) return { error: '表达式不能为空' }
+    const checked = checkLogicExpression(output.expression, resolveRef)
+    if ('error' in checked) {
+      return { error: expressionErrorAt(output.expression, checked.error) }
+    }
+    const parsed = parseExpression(output.expression)
+    if ('error' in parsed) {
+      return { error: expressionErrorAt(output.expression, parsed.error) }
+    }
+    const evaluated = evaluateExpression(parsed.ast, (path) => resolveScopeValue(scope, path))
+    if ('error' in evaluated) {
+      return { hint: hasValues ? evaluated.error.message : '运行上游后可预览结果' }
+    }
+    return { preview: Boolean(evaluated.value) }
+  }, [mode, output.expression, resolveRef, scope, hasValues])
 
   const commitId = () => {
     const next = idDraft.trim()
@@ -64,7 +128,7 @@ function OutputRow(props: {
       setIdDraft(output.id)
       return
     }
-    onChange({ id: next })
+    onChange({ ...output, id: next })
   }
 
   const insertVariable = (template: string) => {
@@ -72,7 +136,7 @@ function OutputRow(props: {
     const start = textarea?.selectionStart ?? output.expression.length
     const end = textarea?.selectionEnd ?? start
     const next = `${output.expression.slice(0, start)}${template}${output.expression.slice(end)}`
-    onChange({ expression: next })
+    onChange({ ...output, mode: 'text', expression: next, graph: undefined })
     window.setTimeout(() => {
       if (!textareaRef.current) return
       textareaRef.current.focus()
@@ -81,19 +145,73 @@ function OutputRow(props: {
     }, 0)
   }
 
-  const status = check.error ? (
-    <span className="insp-logic-error" role="status">
-      {check.error}
-    </span>
-  ) : check.preview !== undefined ? (
-    <span className={`insp-logic-value${check.preview ? ' is-true' : ' is-false'}`}>
-      求值：{check.preview ? '真' : '假'}
-    </span>
-  ) : (
-    <span className="insp-logic-hint">
-      {check.previewError ?? '运行上游后可预览结果'}
-    </span>
-  )
+  const switchToText = () => {
+    if (mode === 'text') return
+    const expression = graph ? formatBuilderTree(graph) : output.expression
+    setLocalError(null)
+    onChange({ ...output, mode: 'text', expression })
+  }
+
+  const switchToGraph = () => {
+    if (mode === 'graph') return
+    setLocalError(null)
+    const existing = output.graph ? normalizeBuilderTree(output.graph) : null
+    if (existing) {
+      onChange({ ...output, mode: 'graph', graph: existing, expression: formatBuilderTree(existing) })
+      return
+    }
+    if (!output.expression.trim()) {
+      onChange({ ...output, mode: 'graph', graph: emptyBuilderTree(), expression: '' })
+      return
+    }
+    const result = expressionToTree(output.expression, resolveRef)
+    if ('error' in result) {
+      setLocalError(`无法转换成图形：${result.error.message}`)
+      return
+    }
+    onChange({
+      ...output,
+      mode: 'graph',
+      graph: result.tree,
+      expression: formatBuilderTree(result.tree),
+    })
+  }
+
+  const commitGraph = (next: BuilderNode) => {
+    setLocalError(null)
+    onChange({ ...output, mode: 'graph', graph: next, expression: formatBuilderTree(next) })
+  }
+
+  const graphExpression = graph ? formatBuilderTree(graph) : ''
+  const graphIssues = check?.issues.length ?? 0
+  const refCount = check?.refs.length ?? 0
+
+  const status =
+    mode === 'text' ? (
+      textCheck.error ? (
+        <span className="insp-logic-error" role="status">
+          {textCheck.error}
+        </span>
+      ) : textCheck.preview !== undefined ? (
+        <span className={`insp-logic-value${textCheck.preview ? ' is-true' : ' is-false'}`}>
+          求值：{textCheck.preview ? '真' : '假'}
+        </span>
+      ) : (
+        <span className="insp-logic-hint">{textCheck.hint ?? '运行上游后可预览结果'}</span>
+      )
+    ) : graphIssues > 0 ? (
+      <span className="insp-logic-error" role="status">
+        {graphIssues} 处问题待修正
+      </span>
+    ) : preview !== null ? (
+      <span className={`insp-logic-value${preview ? ' is-true' : ' is-false'}`}>
+        求值：{preview ? '真' : '假'}
+      </span>
+    ) : (
+      <span className="insp-logic-hint">
+        {hasValues ? '补全每个条件后可预览' : '运行上游后可预览结果'}
+      </span>
+    )
 
   return (
     <article className="insp-logic-card">
@@ -117,6 +235,26 @@ function OutputRow(props: {
             }
           }}
         />
+        <div className="insp-logic-modes" role="tablist" aria-label="表达式模式">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'graph'}
+            className={`insp-logic-mode${mode === 'graph' ? ' is-active' : ''}`}
+            onClick={switchToGraph}
+          >
+            图形
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'text'}
+            className={`insp-logic-mode${mode === 'text' ? ' is-active' : ''}`}
+            onClick={switchToText}
+          >
+            文本
+          </button>
+        </div>
         <button
           type="button"
           className="insp-icon-btn insp-icon-btn-danger"
@@ -128,25 +266,66 @@ function OutputRow(props: {
           <Trash2 size={13} strokeWidth={1.5} aria-hidden="true" />
         </button>
       </div>
-      <textarea
-        ref={textareaRef}
-        className={`insp-textarea insp-logic-expr${check.error ? ' has-error' : ''}`}
-        value={output.expression}
-        rows={3}
-        spellCheck={false}
-        placeholder='例如：{{n1.department.probabilities.财务}} > 0.4 AND {{n1.urgent.noul}} > 0.5'
-        aria-label={`输出 ${output.id} 的表达式`}
-        aria-invalid={Boolean(check.error)}
-        onChange={(event) => onChange({ expression: event.target.value })}
-      />
-      <div className="insp-logic-foot">
-        {status}
-        <VariableMenu
-          variables={variables}
-          onInsert={insertVariable}
-          label="插入变量"
+
+      {mode === 'graph' && graph ? (
+        <LogicBuilder
+          tree={graph}
+          issues={check?.issues ?? []}
+          refGroups={refGroups}
+          scope={scope}
+          resolveRef={resolveRef}
+          onChange={commitGraph}
         />
-      </div>
+      ) : null}
+
+      {mode === 'text' ? (
+        <>
+          <textarea
+            ref={textareaRef}
+            className={`insp-textarea insp-logic-expr${textCheck.error ? ' has-error' : ''}`}
+            value={output.expression}
+            rows={3}
+            spellCheck={false}
+            placeholder="例如：{{n1.risk.score}} < 0.5 AND {{n1.dept.choice}} != &quot;其他&quot;"
+            aria-label={`输出 ${output.id} 的表达式`}
+            aria-invalid={Boolean(textCheck.error)}
+            onChange={(event) =>
+              onChange({
+                ...output,
+                mode: 'text',
+                expression: event.target.value,
+                graph: undefined,
+              })
+            }
+          />
+          <div className="insp-logic-foot">
+            {status}
+            <VariableMenu variables={variables} onInsert={insertVariable} label="插入变量" />
+          </div>
+          {converted.error ? (
+            <p className="insp-logic-hint">
+              无法转换为图形：{converted.error}，继续使用文本模式。
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      {mode === 'graph' ? (
+        <>
+          <div className="insp-logic-foot insp-logic-graphfoot">
+            {status}
+            <span className="insp-logic-refcount">引用 {refCount} 个字段</span>
+          </div>
+          {graphExpression ? (
+            <details className="insp-logic-generated">
+              <summary>生成的表达式</summary>
+              <code>{graphExpression}</code>
+            </details>
+          ) : null}
+        </>
+      ) : null}
+
+      {localError ? <p className="insp-logic-error">{localError}</p> : null}
     </article>
   )
 }
@@ -154,54 +333,18 @@ function OutputRow(props: {
 export function LogicOutputsEditor(props: LogicOutputsEditorProps): JSX.Element {
   const { scenario, node, results, variables, onChange } = props
 
+  const refGroups = useMemo(
+    () => collectScenarioRefs(scenario, node.id),
+    [scenario, node.id],
+  )
   const scope = useMemo(
     () => buildValueScope(node.id, scenario, results),
     [node.id, scenario, results],
   )
-  const hasValues = Object.keys(scope.nodes).length > 0
-  const ancestors = useMemo(
-    () => ancestorsOf(node.id, scenario.edges),
-    [node.id, scenario.edges],
+  const resolveRef = useMemo<RefTypeResolver>(
+    () => (path: string) => refTypeInScenario(scenario, path),
+    [scenario],
   )
-
-  const checks = useMemo(
-    () =>
-      node.outputs.map((output): CheckState => {
-        const checked = checkLogicExpression(output.expression, (path) =>
-          refTypeInScenario(scenario, path),
-        )
-        if ('error' in checked) {
-          return { error: expressionErrorAt(output.expression, checked.error) }
-        }
-        for (const ref of checked.refs) {
-          const ownerId = ref.split('.')[0]
-          if (ownerId === node.id) {
-            return { error: `引用 {{${ref}}} 不能引用自身` }
-          }
-          if (ownerId && !ancestors.has(ownerId)) {
-            return { error: `引用 {{${ref}}} 的 ${ownerId} 不是上游，请先连线` }
-          }
-        }
-        const parsed = parseExpression(output.expression)
-        if ('error' in parsed) {
-          return { error: expressionErrorAt(output.expression, parsed.error) }
-        }
-        const evaluated = evaluateExpression(parsed.ast, (path) =>
-          resolveScopeValue(scope, path),
-        )
-        if ('error' in evaluated) {
-          return {
-            previewError: hasValues ? evaluated.error.message : '运行上游后可预览结果',
-          }
-        }
-        return { preview: Boolean(evaluated.value) }
-      }),
-    [node.outputs, scenario, scope, hasValues, ancestors],
-  )
-
-  const patch = (index: number, changes: Partial<LogicOutput>) => {
-    onChange(node.outputs.map((output, i) => (i === index ? { ...output, ...changes } : output)))
-  }
 
   return (
     <section className="insp-section insp-logic">
@@ -226,8 +369,8 @@ export function LogicOutputsEditor(props: LogicOutputsEditorProps): JSX.Element 
       </div>
 
       <p className="insp-hint">
-        每个输出是一个布尔表达式。引用上游结果用 <code>{'{{节点.字段}}'}</code>，例如{' '}
-        <code>{'{{n1.department.probabilities.财务}} > 0.4'}</code>。
+        默认用图形条件构建；每个输出可在「图形 / 文本」之间切换。引用上游结果写{' '}
+        <code>{'{{节点.字段}}'}</code>。
       </p>
 
       {node.outputs.length === 0 ? (
@@ -235,13 +378,17 @@ export function LogicOutputsEditor(props: LogicOutputsEditorProps): JSX.Element 
       ) : (
         <div className="insp-logic-list">
           {node.outputs.map((output, index) => (
-            <OutputRow
+            <LogicOutputCard
               key={index}
               output={output}
-              check={checks[index] ?? {}}
-              variables={variables}
               canRemove={node.outputs.length > 1}
-              onChange={(changes) => patch(index, changes)}
+              variables={variables}
+              refGroups={refGroups}
+              scope={scope}
+              resolveRef={resolveRef}
+              onChange={(next) =>
+                onChange(node.outputs.map((item, i) => (i === index ? next : item)))
+              }
               onRemove={() => onChange(node.outputs.filter((_, i) => i !== index))}
             />
           ))}
@@ -249,28 +396,30 @@ export function LogicOutputsEditor(props: LogicOutputsEditorProps): JSX.Element 
       )}
 
       <details className="insp-logic-help">
-        <summary>表达式语法</summary>
+        <summary>图形构建器与表达式语法</summary>
         <ul>
           <li>
-            引用：<code>{'{{n1.department.choice}}'}</code>、<code>{'{{n1.urgent.noul}}'}</code>、
-            <code>{'{{n2.risk}}'}</code>
+            图形：组连接词 <code>AND</code>（全部满足）、<code>OR</code>（任一满足）、
+            <code>XOR</code>（恰好一个）；行和组都可 <code>¬</code> 取反。
+            <code>NAND</code> 等价于取反的 AND 组，<code>XNOR</code> 等价于取反的 XOR 组。
           </li>
           <li>
-            比较：<code>&gt;</code> <code>&gt;=</code> <code>&lt;</code> <code>&lt;=</code>{' '}
-            <code>==</code> <code>!=</code>
+            值槽：引用、数字、文本或算式。算式示例：
+            <code>{'{{n1.risk.score}} * 2 + 1'}</code>。
           </li>
           <li>
-            逻辑门：<code>AND</code> <code>OR</code> <code>XOR</code> <code>NAND</code>{' '}
-            <code>XNOR</code> <code>NOT</code>（也接受 <code>&amp;&amp;</code>{' '}
-            <code>||</code> <code>!</code>）
+            引用：<code>{'{{n1.department.choice}}'}</code>、
+            <code>{'{{n1.urgent.noul}}'}</code>、<code>{'{{n2.risk}}'}</code>。
           </li>
           <li>
-            算术与括号：<code>+ - * /</code>、<code>( )</code>；字符串用双引号，如{' '}
-            <code>{'"财务"'}</code>
+            文本模式比较：<code>&gt;</code> <code>&gt;=</code> <code>&lt;</code>{' '}
+            <code>&lt;=</code> <code>==</code> <code>!=</code>；逻辑门：<code>AND</code>{' '}
+            <code>OR</code> <code>XOR</code> <code>NAND</code> <code>XNOR</code>{' '}
+            <code>NOT</code>（也接受 <code>&amp;&amp;</code> <code>||</code> <code>!</code>）。
           </li>
           <li>
-            优先级：括号 &gt; NOT/负号 &gt; 算术 &gt; 比较 &gt; AND/NAND &gt; XOR/XNOR &gt; OR；
-            拿不准就加括号。
+            文本编辑会重新生成图形结构；无法转换的表达式会留在文本模式。字符串用双引号，
+            如 <code>{'"其他"'}</code>。
           </li>
         </ul>
       </details>

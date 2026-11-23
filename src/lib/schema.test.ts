@@ -87,4 +87,70 @@ describe('parseScenario', () => {
     })
     expect(parsed.error).toBeUndefined()
   })
+
+  it('keeps structured graph output across import and export', () => {
+    const graph = {
+      kind: 'group',
+      id: 'g1',
+      op: 'and',
+      negated: false,
+      items: [
+        {
+          kind: 'compare',
+          id: 'c1',
+          op: '>',
+          negated: false,
+          left: { kind: 'ref', path: 'n1.q.noul' },
+          right: { kind: 'number', text: '0.5' },
+        },
+      ],
+    }
+    const input = {
+      ...base,
+      nodes: [
+        apiNode,
+        {
+          ...logicNode,
+          outputs: [{ id: 'flag', expression: 'stale', graph, mode: 'graph' }],
+        },
+      ],
+      edges: [],
+    }
+    const parsed = parseScenario(input)
+    expect(parsed.error).toBeUndefined()
+    const output = parsed.scenario?.nodes[1]
+    if (output?.kind !== 'logic') throw new Error('shape')
+    expect(output.outputs[0].graph).toEqual(graph)
+    expect(output.outputs[0].expression).toBe('{{n1.q.noul}} > 0.5')
+
+    const again = parseScenario(parsed.scenario)
+    expect(again.scenario).toEqual(parsed.scenario)
+  })
+
+  it('drops a malformed graph and falls back to text', () => {
+    const parsed = parseScenario({
+      ...base,
+      nodes: [
+        apiNode,
+        {
+          ...logicNode,
+          outputs: [
+            {
+              id: 'flag',
+              expression: '1 > 0',
+              graph: { kind: 'nope' },
+              mode: 'graph',
+            },
+          ],
+        },
+      ],
+      edges: [],
+    })
+    expect(parsed.error).toBeUndefined()
+    const output = parsed.scenario?.nodes[1]
+    if (output?.kind !== 'logic') throw new Error('shape')
+    expect(output.outputs[0].graph).toBeUndefined()
+    expect(output.outputs[0].mode).toBe('text')
+    expect(output.outputs[0].expression).toBe('1 > 0')
+  })
 })

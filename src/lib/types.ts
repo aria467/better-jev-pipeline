@@ -1,3 +1,5 @@
+import type { BuilderNode } from './logic-builder'
+
 export type JsonPrimitive = string | number | boolean | null
 export type JsonObject = { [key: string]: JsonValue }
 export type JsonArray = JsonValue[]
@@ -25,7 +27,12 @@ export type QuestionType = Question['type']
 
 export interface LogicOutput {
   id: string
+  /** 同步缓存与导出文本；graph 存在时由图形结构重新生成。 */
   expression: string
+  /** 图形构建器的权威结构。 */
+  graph?: BuilderNode
+  /** UI 视图偏好；缺省视为 graph。文本编辑会清除 graph。 */
+  mode?: 'graph' | 'text'
 }
 
 interface StepNodeBase {
