@@ -107,7 +107,7 @@ export function TopBar() {
       <header className="topbar">
       <div className="topbar-brand">
         <div className="eyebrow">TypeSafe · System One</div>
-        <h1 className="topbar-title">Jev Decision Studio</h1>
+        <h1 className="topbar-title">Better Jev Pipeline</h1>
         <p className="topbar-subtitle">多步决策编排 · 请求与响应的可视化编辑</p>
       </div>
 

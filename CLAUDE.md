@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概览
 
-Jev Decision Studio 是 TypeSafe Jev（System One）的**本地编排客户端**，不是模型权重部署：
+Better Jev Pipeline 是 TypeSafe Jev（System One）的**本地编排客户端**，不是模型权重部署：
 
 - 浏览器 React 应用（`src/`）通过 Vite 代理访问本地 Express 服务（`server/index.ts`），由服务端携带 API Key、经本地 HTTP 代理调用 `api.typesafe.ai`。
 - 直连 `api.typesafe.ai` 会返回 **451**，必须走 `127.0.0.1:7892` 代理（`TYPESAFE_PROXY`）。

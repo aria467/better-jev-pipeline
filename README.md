@@ -2,7 +2,7 @@
 
 ![界面预览](docs/preview.png)
 
-本地运行的多步决策编排工作台（应用内标题为「Jev Decision Studio」）。用节点图组织多次 Jev 调用，可视化编辑发送给模型的 `state` 与 `questions`，并展示返回的概率、置信度、原始 JSON、token 与费用。
+本地运行的多步决策编排工作台。用节点图组织多次 Jev 调用，可视化编辑发送给模型的 `state` 与 `questions`，并展示返回的概率、置信度、原始 JSON、token 与费用。
 
 - 官方 Jev 是 TypeSafe 的托管 API，本项目是**本地客户端 + 代理服务**，不是模型权重部署。
 - 支持 `choice` / `score` / `noul` 三类文本问题；`box` 需要图片输入，首版不做。
